@@ -1,0 +1,1778 @@
+
+GET /sentbase/_search
+{
+  "query": {
+    "match": { "snt": "insisted" }
+    },
+     "size" : 0,
+    "aggs" : {
+        "wordlist" : {
+            "terms" : { "field" : "dim"} 
+         }
+    }
+}
+
+GET /sentbase/_search
+{
+  "query": {
+    "match": { "snt": "insisted" }
+    }
+}
+
+
+GET /_search
+{
+  "query": {
+    "prefix" : { "user" : "ki" }
+  }
+}
+
+GET /docnet/_search
+{
+  "query": {
+    "match": { "doc": "open" }
+    },
+     "size" : 0,
+    "aggs" : {
+        "wordlist" : {
+            "terms" : { "field" : "doc", "size":2000} 
+         }
+    }
+}
+
+
+GET /sentbase/_search
+{
+"query": {"prefix": { "kp": {"value":"dobj_open_"} }},
+ "size" : 0,
+  "aggs" : {
+      "termrank" : {
+          "terms" : { "field" : "kp", "include": "dobj_open_.*", "size":10},
+        "aggs" : { "avg_age" : {"top_hits": { "_source": {"includes":"snt" }, "size":1}       }  }
+      } 
+  }
+} 
+
+在 Elasticsearch 中，写入和打开一个新段的轻量的过程叫做 refresh 。 默认情况下每个分片会每秒自动刷新一次。这就是为什么我们说 Elasticsearch 是 近 实时搜索: 文档的变化并不是立即对搜索可见，但会在一秒之内变为可见。
+
+请教下写入es的并发量.
+Elasticsearch | 作者 coolloves | 发布于2016年04月05日 | 阅读数：7193
+分享到：QQ空间新浪微博微信QQ好友印象笔记有道云笔记
+目前使用的rsyslog写入es,有些离线数据想导入es,就通过rsyslog的imfile读入后解析然后传给es,看了下,大约5k doc/s的速度导入,那么几百g的日志导入进去,貌似时间也挺久的,有什么其他的途径能更快点吗?
+ 导入es
+2016-04-05 添加评论
+1 个回复
+
+helloes
+
+赞同来自: stab 、coolloves
+
+用SSD
+多线程bulk
+尽量设置每个bulk的大小在5~15M左右
+增加节点、分片
+设置多个path.data目录，或配置RAID 0阵列
+如果用的是SSD，设置index.store.throttle.type：none
+禁用_all
+增大index.refresh_interval的值，默认1s
+增大index.translog.flush_threshold_size的值
+设置0副本，建完索引优化后再增加副本
+增大indices.memory.index_buffer_size的值
+用比较新版本的ES
+
+
+并不是所有的情况都需要每秒刷新。可能你正在使用 Elasticsearch 索引大量的日志文件， 你可能想优化索引速度而不是近实时搜索， 可以通过设置 refresh_interval ， 降低每个索引的刷新频率：
+
+PUT /my_logs
+{
+  "settings": {
+    "refresh_interval": "30s" 
+  }
+}
+
+
+每30秒刷新 my_logs 索引。
+
+refresh_interval 可以在既存索引上进行动态更新。 在生产环境中，当你正在建立一个大的新索引时，可以先关闭自动刷新，待开始使用该索引时，再把它们调回来：
+
+PUT /my_logs/_settings
+{ "refresh_interval": -1 } 
+
+PUT /my_logs/_settings
+{ "refresh_interval": "1s" } 
+
+POST /_refresh 
+POST /blogs/_refresh 
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "VERB_.*", "size":10 } ,
+            "aggs" : {
+                "avg_age" : {
+                    "top_hits": { "_source": {"includes":"snt" }, "size":1
+                      
+                    }
+                }
+            }
+        }
+    }
+}
+
+GET /twitter/_search?q=user:kimchy
+GET /_all/_search?q=tag:wow
+
+GET twitter/_doc/0
+
+GET /dm/_search
+{
+  "size" : 0,
+    "aggs" : {
+        "word_rank" : {
+            "terms" : { "field" : "snt" } 
+        }
+    }
+}
+
+GET /dm/_search
+{
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "VERB_.*", "size":10} 
+        }
+    }
+}
+
+delete /dm/_doc/mAT-1HIBrezUqn2jlrMR
+
+http://ftp.werror.com:9200/twitter/_doc/hello_word
+
+{"_index":"twitter","_type":"_doc","_id":"hello_word","_version":3,"_seq_no":4,"_primary_term":1,"found":true,"_source":{
+  "first_name":"Jane", 
+  "last_name":"Smith",
+  "age":32,
+  "about":"I like to collect rock albums",
+  "interests":["music"]
+}
+}
+
+如果总是在特定的字段上搜索，可以通过设置enabled为false来关闭_all：
+
+"events":{
+"_all":{"enabled":false}
+}
+
+put /twitter/_doc/one
+{
+  "first_name":"Jane", 
+  "last_name":"Smith",
+  "age":32,
+  "about":"I like to collect rock albums",
+  "interests":["music"]
+}
+user为该文档的类型
+
+#! Deprecation: [types removal] Specifying types in document index requests is deprecated, use the typeless endpoints instead (/{index}/_doc/{id}, /{index}/_doc, or /{index}/_create/{id}).
+
+1是该文档的id
+
+也可不指定id，但需要使用post命令，id会自动生成
+
+post /lib/user
+{
+  "first_name":"zhou", 
+  "last_name":"Lucky",
+  "age":18,
+  "about":"I like to collect rock albums",
+  "interests":["music"]
+}
+未指定id时的执行结果：
+{
+  "_index": "lib",
+  "_type": "user",
+  "_id": "J3UJfGkBgIN7A13YK5hV",
+  "_version": 1,
+  "result": "created",
+  "_shards": {
+    "total": 1,
+    "successful": 1,
+    "failed": 0
+  },
+  "_seq_no": 3,
+  "_primary_term": 4
+}
+根据id查看
+
+get /lib/user/1/_source
+执行结果：
+{
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "age": 20,
+  "about": "I like to collect rock albums",
+  "interests": [
+    "music"
+  ]
+}
+ 
+ 
+get /lib/user/J3UJfGkBgIN7A13YK5hV/_source
+执行结果：
+{
+  "first_name": "zhou",
+  "last_name": "Lucky",
+  "age": 18,
+  "about": "I like to collect rock albums",
+  "interests": [
+    "music"
+  ]
+}
+4.更新文档
+————————————————
+版权声明：本文为CSDN博主「周天祥」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/u014646662/java/article/details/88559522
+
+7.11
+GET /hbsnt/_search
+{
+  "query": {
+    "term": {"rid": 1000005}
+  },
+   "aggs": {
+     "all_tags": {
+       "terms": {  
+         "field": "errs"
+       }
+     }
+   }
+}
+
+GET /hbsnt/_search
+{
+  "query": {
+    "constant_score": {
+      "filter": {
+        "bool": {
+          "must" : [
+            {"term" : {"rid" : 1000005}},
+            {"term" : {"uid" : 14292565}}
+          ]
+        }
+      }
+    }
+  },
+  "aggs": {
+     "all_tags": {
+       "terms": {  
+         "field": "errs"
+       }
+     }
+   }
+}
+
+
+GET /_sql?format=txt
+{
+    "query":  "select uid, count(*) cnt from hbsnt group by uid order by cnt desc limit 10"
+}
+
+import hashlib   
+
+m2 = hashlib.md5()   
+m2.update(src)   
+print m2.hexdigest()
+
+GET /gzjc/_search
+{
+    "query": {
+        "prefix": {
+            "kp": "vbg:"
+        }
+    }
+}
+
+GET /gzjc/_search
+{
+    "query": {
+        "prefix": {
+            "kp": "vbg:"
+        }
+    },
+    "aggs": {
+     "all_tags": {
+       "terms": {  
+         "field": "kp"
+       }
+     }
+   }
+}
+
+settings, mappings 
+curl -XPOST 'http://master:9200/tv' -d @tvcount.json
+curl -H "Content-Type: application/json" -XPUT 'http://localhost:9200/sent/' -d @sent.json
+
+https://www.elastic.co/guide/en/kibana/current/tutorial-load-dataset.html
+sample data 
+wget https://download.elastic.co/demos/kibana/gettingstarted/7.x/shakespeare.json
+wget https://download.elastic.co/demos/kibana/gettingstarted/7.x/accounts.zip
+wget https://download.elastic.co/demos/kibana/gettingstarted/7.x/logs.jsonl.gz
+
+curl -H 'Content-Type: application/x-ndjson' -XPOST 'localhost:9200/bank/account/_bulk?pretty' --data-binary @accounts.json
+curl -H 'Content-Type: application/x-ndjson' -XPOST 'localhost:9200/shakespeare/_bulk?pretty' --data-binary @shakespeare.json
+curl -H 'Content-Type: application/x-ndjson' -XPOST 'localhost:9200/_bulk?pretty' --data-binary @logs.jsonl
+
+curl -H 'Content-Type: application/x-ndjson' -XPOST 'localhost:9200/gzjc/_bulk?pretty' --data-binary @gzjc.json
+
+curl -H 'Content-Type: application/x-ndjson' -XPOST 'localhost:9200/corpus_snt' --data-binary @snt_settings.json
+
+PUT /shakespeare
+{
+  "mappings": {
+    "properties": {
+    "speaker": {"type": "keyword"},
+    "play_name": {"type": "keyword"},
+    "line_id": {"type": "integer"},
+    "speech_number": {"type": "integer"}
+    }
+  }
+}
+
+PUT /test
+{
+    "settings": { "number_of_shards": "3", "number_of_replicas": "1"},
+    "mappings": {
+        "sent":{ 
+		"properties": { 
+			"sid":{ "type":"integer" }, 
+			"snt":{ "type":"text" }, 
+			"kp":{ "type":"keyword" }, 
+			"postag":{ "type":"integer" }, 
+			"np":{ "type":"keyword" },
+			"dobj_v_n":{ "type":"keyword" }, 
+			"src":{ "type":"keyword" }} 
+		} 
+		} 
+    }
+}
+
+
+$ cat requests
+{ "index" : { "_index" : "test", "_id" : "1" } }
+{ "field1" : "value1" }
+$ curl -s -H "Content-Type: application/x-ndjson" -XPOST localhost:9200/_bulk --data-binary "@requests"; echo
+{"took":7, "errors": false, "items":[{"index":{"_index":"test","_type":"_doc","_id":"1","_version":1,"result":"created","forced_ref
+
+
+http://cluesay.com:9200/gzjc/_doc/3
+
+from elasticsearch import Elasticsearch
+
+es = Elasticsearch() #['%s:%s' % (user, pwd, ip, port)]
+
+mymapping = {
+    'mappings': {
+        'mytype': {
+            'properties': {
+                'mytitle': {
+                    'type': 'text',
+                    'analyzer': 'ik_max_word',
+                    'search_analyzer': 'ik_max_word'
+                },
+                'mycontent': {
+                    'type': 'text',
+                    'analyzer': 'ik_max_word',
+                    'search_analyzer': 'ik_max_word'
+                },
+                'mykeywords': {
+                    'type': 'text',
+                    'analyzer': 'ik_max_word',
+                    'search_analyzer': 'ik_max_word'
+                }
+
+            }
+        }
+    }
+}
+if es.indices.exists(index='myindex') is not True:
+    res = es.indices.create(index='myindex', body=mymapping)
+es.index(index="myindex", doc_type="mytype", id=1, body={"mytitle": "好文章", "mycontent": "内容也好", "keywords": , "mykeywords": "关键 词语"} )
+es.delete(index="myindex", doc_type="mytype", id=1)
+es.get(index="myindex", doc_type="mytype", id=1)
+mymatch = {
+    "query": {
+        "match": {
+            "mykeywords": "关键"
+        }
+    }
+}
+es.search(index="myindex", doc_type="mytype", body=mymatch)
+
+
+
+PUT my_index 
+{
+  "mappings": {
+    "properties": { 
+      "title":    { "type": "text"  },   #keyword
+      "name":     { "type": "text"  }, 
+      "age":      { "type": "integer" },  
+      "created":  {
+        "type":   "date", 
+        "format": "strict_date_optional_time||epoch_millis"
+      }
+    }
+  }
+}
+
+pip install elasticsearch_dsl
+
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# @Time    : 2018/4/18 下午9:06
+# @Author  : lee
+# @File    : es_types.py
+# @Version : 1.0
+# 说明: 在elasticsearch中建立一个索引及type
+from datetime import datetime
+from elasticsearch_dsl import DocType, Date, Keyword, Text, Integer
+
+
+# 配置hosts ip
+from elasticsearch_dsl.connections import connections
+connections.create_connection(hosts=["localhost"])
+
+
+
+class ZukerType(DocType):
+    # 房屋的数据
+    """
+    'title' :'名称',
+    'price':'价格',
+    'create_date':'时间',
+    'desc':'介绍',
+    'area':'位置',
+    'longitude':'经度',
+    'latitude':'维度',
+    'url': 'url',
+    """
+
+    # 建立 索引和doc
+    title = Text(analyzer="ik_max_word")
+    price = Integer()
+    create_date = Date()
+    desc = Text(analyzer="ik_max_word")
+    area = Text(analyzer="ik_max_word")
+    longitude = float()
+    latitude = float()
+    url = Keyword()
+
+    # 类似于django
+    class Meta:
+        index = 'zuker' # 索引名称
+        doc_type = '58house_info' # type 类似数据库中的表[table]
+
+if __name__ == "__main__":
+    ZukerType.init()
+
+	doc_index = "indexName"
+
+doc_type = "typeName"
+
+http://ftp.werror.com:9200/twitter/_settings
+
+doc_body = [      
+
+    {"index": {}}, 
+    {'name': 'jackaaa', 'age': 2000, 'sex': 'female', 'address': u'北京'},     
+    {"index": {}},      
+    {'name': 'jackbbb', 'age': 3000, 'sex': 'male', 'address': u'上海'},      
+    {"index": {}},      
+    {'name': 'jackccc', 'age': 4000, 'sex': 'female', 'address': u'广州'},      
+    {"index": {}},      
+    {'name': 'jackddd', 'age': 1000, 'sex': 'male', 'address': u'深圳'}
+
+]
+
+es.bulk(index=doc_index, doc_type=doc_type, body=doc_body)
+
+When using capacity-constrained networks (low throughput), it may be handy to enable compression. This is especially useful when doing bulk loads or inserting large documents. This will configure compression on the request.
+
+from elasticsearch import Elasticsearch
+es = Elasticsearch(hosts, http_compress=True)
+
+>>> from datetime import datetime
+>>> from elasticsearch import Elasticsearch
+
+# by default we connect to localhost:9200
+>>> es = Elasticsearch()
+
+# create an index in elasticsearch, ignore status code 400 (index already exists)
+>>> es.indices.create(index='my-index', ignore=400)
+{u'acknowledged': True}
+
+# datetimes will be serialized
+>>> es.index(index="my-index", doc_type="test-type", id=42, body={"any": "data", "timestamp": datetime.now()})
+{u'_id': u'42', u'_index': u'my-index', u'_type': u'test-type', u'_version': 1, u'ok': True}
+
+# but not deserialized
+>>> es.get(index="my-index", doc_type="test-type", id=42)['_source']
+{u'any': u'data', u'timestamp': u'2013-05-12T19:45:31.804229'}
+
+
+=======
+# 2019.6.27
+import spacy
+import shelve
+import plac
+import json
+from elasticsearch import Elasticsearch
+
+nlp = spacy.load("en_core_web_sm")
+#es = Elasticsearch() 
+
+snt_mapping = {
+    'mappings': {
+        'snt_type': {
+            'properties': {
+				'sid': {'type': 'long'},
+                'snt': {'type': 'text'},
+                'postag': {'type': 'text'},
+				'ske': {'type': 'text'},
+				'kp': {'type': 'string'},
+				'np': {'type': 'string'},
+				'vbd': {'type': 'string'},
+				'vp': {'type': 'string'},
+				'vpat': {'type': 'string'},
+				'dobj_v_n': {'type': 'string'},
+				'acomp_n_a': {'type': 'string'},
+            }
+        }
+    }
+}
+
+def doc_es(sid, doc):
+	d = {'sid': int(sid), 'snt':doc.text}
+	d['postag']= " ".join([ t.text.lower() + "_" + t.tag_ for t in doc])
+	d['np']= list({ np.text for np in doc.noun_chunks})
+	return d
+
+@plac.annotations(filename=("shelve filename, ", "positional", None, str))
+def shelve_es(filename):
+	with shelve.open(filename) as db, open(filename.split(".")[0] + ".es", "w") as fw:
+		print("doc count:",len(db))
+		doc1 = nlp("hello")
+		#if es.indices.exists(index=filename) is not True:
+		#	res = es.indices.create(filename) #, body=snt_mapping
+		for sid,bs in db.items():
+			try:
+				doc = Doc(doc1.vocab).from_bytes(bs)
+				d = doc_es(sid, doc)
+				fw.write("{'index': {}}\n")
+				fw.write(json.dumps(d) +"\n")
+				#es.index(filename, d, "snt_type", int(sid))  #index(index, body, doc_type='_doc', id=None, params=None)
+			except Exception:
+				print("exception,", str(Exception))
+		print(">>finished " + filename )
+
+
+if __name__ == '__main__':
+	plac.call(shelve_es)
+
+================
+
+GET /ecommerce/product/1
+	
+	PUT /ecommerce/product/1
+{
+    "name" : "gaolujie yagao",
+    "desc" :  "gaoxiao meibai",
+    "price" :  30,
+    "producer" :      "gaolujie producer",
+    "tags": [ "meibai", "fangzhu" ]
+}
+PUT /ecommerce/product/2
+{
+    "name" : "jiajieshi yagao",
+    "desc" :  "youxiao fangzhu",
+    "price" :  25,
+    "producer" :      "jiajieshi producer",
+    "tags": [ "fangzhu" ]
+}
+PUT /ecommerce/product/3
+{
+    "name" : "zhonghua yagao",
+    "desc" :  "caoben zhiwu",
+    "price" :  40,
+    "producer" :      "zhonghua producer",
+    "tags": [ "qingxin" ]
+}
+
+DELETE /ecommerce/product/1
+
+POST /ecommerce/product/1/_update
+{
+  "doc": {
+    "name": "jiaqiangban gaolujie yagao"
+  }
+}
+
+　查看：curl -XGET http://192.168.80.10:9200/zhouls/_settings?pretty
+
+　　操作不存在索引：curl -XPUT '192.168.80.10:9200/liuch/' -d'{"settings":{"number_of_shards":3,"number_of_replicas":0}}'
+
+　　操作已存在索引：curl -XPUT '192.168.80.10:9200/zhouls/_settings' -d'{"index":{"number_of_replicas":1}}'
+
+总结：就是，不存在索引时,可以指定副本和分片，如果已经存在,则只能修改副本。
+
+https://blog.csdn.net/u011051912/article/details/81234408
+Rabbitmq通过logstash把queue中的数据保存到ElasticSearch
+
+GET /corpus_snt/_search
+{
+    "query": {
+        "prefix": {
+            "np": "the arm"
+        }
+    }
+}
+
+GET /corpus_snt/_mapping
+
+{
+  "corpus_snt": {
+    "mappings": {
+      "properties": {
+        "np": {
+          "type": "text",
+          "analyzer": "kp_ana"
+        },
+        "postag": {
+          "type": "text",
+          "analyzer": "postag_ana"
+        },
+        "sid": {
+          "type": "long"
+        },
+        "snt": {
+          "type": "text",
+          "analyzer": "standard"
+        }
+      }
+    }
+  }
+}
+
+https://elkguide.elasticsearch.cn/kibana/v5/visualize/
+当你从一个已保存的搜索开始创建并保存好了可视化，这个搜索就绑定在这个可视化上。如果你修改了搜索，对应的可视化也会自动更新。
+
+
+Developer.comArchitecture & DesignRead More in Architecture & Design »
+Elasticsearch: Analyzing Text with the Analyze API
+facebook twitter in Email
+April 27, 2015
+By Developer.com Staff
+Send Email »
+Tweet
+This article is an excerpt from Elasticsearch in Action by Manning Publishing.
+
+By Radu Gheorghe, Matthew Lee Hinman, and Roy Russo.
+
+Using the analyze API to test an analysis process can be extremely helpful when tracking down how information is being stored in your Elasticsearch indices. This API allows you to send any text to Elasticsearch, specifying what analyzer, tokenizer, or token filters to use, and get back the analyzed tokens. The following listing shows an example of what the analyze API looks like, using the standard analyzer to analyze the text "I love Bears and Fish."
+
+Listing 1: Example of using the analyze API
+
+Email Article
+Print Article
+% curl -XPOST 'localhost:9200/_analyze?analyzer=standard'
+   -d'I love Bears and Fish.'
+{
+   "tokens": [
+      {
+         "end_offset": 1,
+         "position": 1,
+         "start_offset": 0,
+         "token": "i",          #A
+         "type": "<ALPHANUM>"
+      },
+       {
+         "end_offset": 6,
+         "position": 2,
+         "start_offset": 2,
+         "token": "love",       #A
+         "type": "<ALPHANUM>"
+      },
+      {
+         "end_offset": 12,
+         "position": 3,
+         "start_offset": 7,
+         "token": "bears",      #A
+
+         "type": "<ALPHANUM>"
+      },
+      {
+         "end_offset": 16,
+         "position": 4,
+         "start_offset": 13,
+         "token": "and",        #A
+         "type": "<ALPHANUM>"
+      },
+      {
+         "end_offset": 21,
+         "position": 5,
+         "start_offset": 17,
+         "token": "fish",       #A
+         "type": "<ALPHANUM>"
+      }
+   ]
+}
+#A The analyzed tokens: "i", "love", "bears", "and", and "fish"
+
+The most important output from the analysis API is the token key. The output is a list of these maps, which gives you a representation of what the processed tokens (the ones that are going to actually be written to the index!) look like. For example, with the text "I love Bears and Fish." you get back five tokens: i, love, bears, and, fish. Notice that in this case, with the standard analyzer, each token was lowercased, and the punctuation at the end of the sentence was removed. This is a great way to test documents to see how Elasticsearch will analyze them, and it has quite a few ways to customize the analysis that's performed on the text.
+
+Selecting an analyzer
+If you already have an analyzer in mind and want to see how it handles some text, you can set the tt>analyzerparameter to the name of the analyzer. We'll go over the different uilt-in analyzers in the next section, so keep this in mind if you want to try out any of them!
+
+Related Articles
+How Hadoop is Different from Conventional BI
+Understanding BI Components and Data
+Big Data: As a Developer, Should You Care?
+If you configured an analyzer in your elasticsearch.yml file, you can also reference it by name in the analyzer parameter. Additionally, if you've created an index with a custom analyzer similar to the example in listing 5.2, you can still use this analyzer by name, but instead of using the HTTP endpoint of /_search, you'll need to specify the index first. An example using the index named veggies and an analyzer called myanalyzer is shown here:
+
+% curl -XPOST 'localhost:9200/veggies/
+   _analyze?analyzer=myanalyzer' -d'...'
+Combining parts to create an impromptu analyzer
+Sometimes you may not want to use a built-in analyzer but instead try out a combination of tokenizers and token filters, for instance, to see how a particular tokenizer breaks up a sentence without any other analysis. With the analysis API you can specify a tokenizer and a list of token filters to be used for analyzing the text. For example, if you wanted to use the whitespace tokenizer (to split the text on spaces) and then use the lowercase and reverse token filters, you could do so as follows:
+
+% curl -XPOST
+'localhost:9200/_analyze?tokenizer=
+   whitespace&filters=lowercase,reverse' -d
+'I love Bears and Fish.'
+
+### hbsnt_es.py 
+
+import plac
+import json
+from elasticsearch import Elasticsearch
+from cikuu import my
+
+es = Elasticsearch() 
+
+@plac.annotations(idxname=("es table name, ie:hbsnt", "positional", None, str))
+def init_index(idxname):
+	try:
+		if es.indices.exists(idxname):
+			print("already exists", idxname)
+			es.indices.delete(idxname)
+		es.indices.create(idxname, config) #, body=snt_mapping
+		#es.index(filename, d, "snt_type", int(sid))  #index(index, body, doc_type='_doc', id=None, params=None)
+		for row in my.select_dict("select * from %s limit 10000000" % (idxname)):
+			row['errs'] = row['errs'].replace("*","/").split("||")
+			row['rid'] = int(row['rid'])
+			if len(row['errs']) < 1 : 
+				del row['errs']
+			sid = row['sid']
+			del row['sid']
+			es.index(idxname, row, id = str(sid))
+	except Exception as e:
+		print("exception,", str(e))
+	print(">>finished " + idxname )
+
+if __name__ == '__main__':
+	plac.call(init_index)
+
+	
+CREATE TABLE largetable (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT primary key,
+  `status` int default 1,
+  `sometext` text
+ ) ENGINE=myisam DEFAULT CHARSET=utf8;
+
+alter table largetable partition by RANGE(did) (
+ PARTITION p1 VALUES LESS THAN (1000000),
+ PARTITION p2 VALUES LESS THAN (2000000),
+ PARTITION pmax VALUES LESS THAN MAXVALUE);
+ 
+ 
+ pigaiwang@dgx-1:/raid/pigai_data/mysql/data/bak$ myisampack eng_essay_version_2018
+Compressing eng_essay_version_2018.MYD: (54912704 records)
+- Calculating statistics
+Aborted: eng_essay_version_2018.MYD is not compressed
+
+template:    %1 %2\n %3 %4
+
+create table essay_version ( eid int , doc_ver int, template_ver int, tm timestamp, span int , snts json, score float , partial_update tinyint) 
+snts:  {0:snt0, 1:snt1, ... , } 
+
+PUT news
+{
+  "mappings": {
+    "properties": {
+      "tags": { "type": "text", "analyzer": "whitespace" }
+    }
+  }
+}
+
+POST /news/_doc/1
+{"tags":"Hello World"}
+
+# 有值
+GET /news/_search
+{"query":{"term":{"tags":"Hello"}}}
+
+# 无值
+GET /news/_search
+{"query":{"term":{"tags":"Hello World"}}}
+
+
+=== 2020.6.21,  es.werror.com 
+GET /dm/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"kp":"dobj_visit_grandmother"}
+  }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "dobj_visit_.*", "size":10} 
+        }
+    }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "wordlist" : {
+            "terms" : { "field" : "snt", "size":4000} 
+            
+        }
+    }
+}
+
+
+
+GET /dm/_search
+{
+  "query": {"match": {"rid":"2055391"}},
+  "size" : 0,
+   "aggs": {
+      "a": {
+        "terms": {
+          "field": "kp",
+          "include": "ADJ_many", 
+          "size": 1
+        }
+      },
+      "n": {
+        "terms": {
+          "field": "kp",
+          "include": "NOUN_hobby", 
+          "size": 1
+        }
+      }
+  }
+    
+}
+
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+   "aggs": {
+      "a": {
+        "terms": {
+          "field": "kp",
+          "include": "ADJ_.*", 
+          "size": 10
+        }
+      },
+      "n": {
+        "terms": {
+          "field": "kp",
+          "include": "NOUN_.*", 
+          "size": 1
+        }
+      },
+      "v": {
+        "terms": {
+          "field": "kp",
+          "include": "VERB_.*", 
+          "size": 1
+        }
+      },
+      "d": {
+        "terms": {
+          "field": "kp",
+          "include": "ADV_.*", 
+          "size": 1
+        }
+      },
+      "p": {
+        "terms": {
+          "field": "kp",
+          "include": "PREP_.*", 
+          "size": 1
+        }
+      },
+      "r": {
+        "terms": {
+          "field": "kp",
+          "include": "PRON_.*", 
+          "size": 1
+        }
+      },
+      "c": {
+        "terms": {
+          "field": "kp",
+          "include": "CONJ_.*", 
+          "size": 1
+        }
+      }
+  }
+    
+}
+
+
+# (verb,cnt, sentence)
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "VERB_.*", "size":10 } ,
+            "aggs" : {
+                "avg_age" : {
+                    "top_hits": { "_source": {"includes":"snt" }, "size":1
+                      
+                    }
+                }
+            }
+        }
+    }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "ADJ_many|NOUN_hobby" } ,
+            "aggs" : {
+                "avg_age" : {
+                    "top_hits": { "_source": {"includes":"snt" }, "size":1
+                      
+                    }
+                }
+            }
+        }
+    }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "snt","include": "many|hobby" } ,
+            "aggs" : {
+                "avg_age" : {
+                    "top_hits": { "_source": {"includes":"snt" }, "size":1
+                      
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+POST /dm/_cache/clear
+
+delete /dm/_doc/mAT-1HIBrezUqn2jlrMR
+
+put /twitter
+
+post /dm/_doc/
+{
+  "snt":"The quick fox jumped over the lazy dog.", 
+  "sid":32,
+  "kp":["VERB/book","NOUN/book","dobj/open door"]
+}
+
+put /twitter/_doc/Hello_word
+{
+  "first_name":"Jane", 
+  "last_name":"Smith",
+  "age":32,
+  "about":"I like to collect rock albums",
+  "interests":["music"]
+}
+
+get /dm/_settings
+
+PUT dm
+{
+  "mappings": {
+    "properties": {
+      "tag": { "type": "text", "analyzer": "whitespace" }
+    }
+  }
+}
+
+
+GET _search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET /twitter/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+
+
+PUT news
+{
+  "mappings": {
+    "properties": {
+      "tags": {
+        "type": "text",
+        "analyzer": "whitespace"
+      }
+    }
+  }
+}
+
+POST /news/_doc/1
+{"tags":"Hello World"}
+
+# 有值
+GET /news/_search
+{"query":{"term":{"tags":"Hello"}}}
+
+# 无值
+GET /news/_search
+{"query":{"term":{"tags":"Hello World"}}}
+
+
+ES对内存和磁盘等硬件配置要求点（Elasticsearch）
+
+SELECT_BIN 2020-03-09 16:35:46  1066  收藏
+分类专栏： elasticsearch
+版权
+硬件
+按照正常的流程，你可能已经在自己的笔记本电脑或集群上使用了 Elasticsearch。 但是当要部署 Elasticsearch 到生产环境时，有一些建议是你需要考虑的。这里没有什么必须要遵守的准则，Elasticsearch 被用于在众多的机器上处理各种任务。基于我们在生产环境使用 Elasticsearch 集群的经验，这些建议可以为你提供一个好的起点。
+
+内存
+如果有一种资源是最先被耗尽的，它可能是内存。排序和聚合都很耗内存，所以有足够的堆空间来应付它们是很重要的。即使堆空间是比较小的时候， 也能为操作系统文件缓存提供额外的内存。因为 Lucene 使用的许多数据结构是基于磁盘的格式，Elasticsearch 利用操作系统缓存能产生很大效果。
+
+64 GB 内存的机器是非常理想的， 但是32 GB 和16 GB 机器也是很常见的。少于8 GB 会适得其反（你最终需要很多很多的小机器），大于64 GB 的机器也会有问题， 我们将在 堆内存:大小和交换 中讨论。
+
+CPUs
+大多数 Elasticsearch 部署往往对 CPU 要求不高。因此，相对其它资源，具体配置多少个（CPU）不是那么关键。你应该选择具有多个内核的现代处理器，常见的集群使用两到八个核的机器。
+
+如果你要在更快的 CPUs 和更多的核心之间选择，选择更多的核心更好。多个内核提供的额外并发远胜过稍微快一点点的时钟频率。
+
+硬盘
+硬盘对所有的集群都很重要，对大量写入的集群更是加倍重要（例如那些存储日志数据的）。硬盘是服务器上最慢的子系统，这意味着那些写入量很大的集群很容易让硬盘饱和，使得它成为集群的瓶颈。
+
+如果你负担得起 SSD，它将远远超出任何旋转介质（注：机械硬盘，磁带等）。 基于 SSD 的节点，查询和索引性能都有提升。如果你负担得起，SSD 是一个好的选择。
+
+检查你的 I/O 调度程序
+
+如果你正在使用 SSDs，确保你的系统 I/O 调度程序是配置正确的。 当你向硬盘写数据，I/O 调度程序决定何时把数据实际发送到硬盘。 大多数默认 *nix 发行版下的调度程序都叫做 cfq（完全公平队列）。
+
+调度程序分配 时间片 到每个进程。并且优化这些到硬盘的众多队列的传递。但它是为旋转介质优化的： 机械硬盘的固有特性意味着它写入数据到基于物理布局的硬盘会更高效。
+
+这对 SSD 来说是低效的，尽管这里没有涉及到机械硬盘。但是，deadline 或者 noop 应该被使用。deadline 调度程序基于写入等待时间进行优化， noop 只是一个简单的 FIFO 队列。
+
+这个简单的更改可以带来显著的影响。仅仅是使用正确的调度程序，我们看到了500倍的写入能力提升。
+
+如果你使用旋转介质，尝试获取尽可能快的硬盘（高性能服务器硬盘，15k RPM 驱动器）。
+
+使用 RAID 0 是提高硬盘速度的有效途径，对机械硬盘和 SSD 来说都是如此。没有必要使用镜像或其它 RAID 变体，因为高可用已经通过 replicas 内建于 Elasticsearch 之中。
+
+最后，避免使用网络附加存储（NAS）。人们常声称他们的 NAS 解决方案比本地驱动器更快更可靠。除却这些声称， 我们从没看到 NAS 能配得上它的大肆宣传。NAS 常常很慢，显露出更大的延时和更宽的平均延时方差，而且它是单点故障的。
+
+网络
+快速可靠的网络显然对分布式系统的性能是很重要的。 低延时能帮助确保节点间能容易的通讯，大带宽能帮助分片移动和恢复。现代数据中心网络（1 GbE, 10 GbE）对绝大多数集群都是足够的。
+
+即使数据中心们近在咫尺，也要避免集群跨越多个数据中心。绝对要避免集群跨越大的地理距离。
+
+Elasticsearch 假定所有节点都是平等的—​并不会因为有一半的节点在150ms 外的另一数据中心而有所不同。更大的延时会加重分布式系统中的问题而且使得调试和排错更困难。
+
+和 NAS 的争论类似，每个人都声称他们的数据中心间的线路都是健壮和低延时的。这是真的—​直到它不是时（网络失败终究是会发生的，你可以相信它）。 从我们的经验来看，处理跨数据中心集群的麻烦事是根本不值得的。
+————————————————
+版权声明：本文为CSDN博主「SELECT_BIN」的原创文章，遵循CC 4.0 BY-SA版权协议，转载请附上原文出处链接及本声明。
+原文链接：https://blog.csdn.net/SELECT_BIN/java/article/details/104755416
+
+
+GET /sentbase/_refresh
+
+GET /sentbase/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET /sentbase/_search
+{
+  "query": {
+    "match": {"snt":"love"}
+  }
+}
+
+GET /sentbase/_search
+{
+  "query": {
+    "match": {"kp":"VBP_love"}
+  }
+}
+
+
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"kp":"VBG_playing"}
+  }
+}
+
+
+GET /sentbase/_search
+{
+  "query": {
+    "match": { "kp":"open"}
+  }
+}
+
+
+GET /sentbase/_search
+{
+"query": {"prefix": { "kp": {"value":"dobj_open_"} }},
+ "size" : 0,
+  "aggs" : {
+      "termrank" : {
+          "terms" : { "field" : "kp", "include": "dobj_open_.*", "size":10} 
+      }
+  }
+}  
+
+GET /sentbase/_search
+{
+"query": {"prefix": { "kp": {"value":"dobj_"} }},
+ "size" : 0,
+  "aggs" : {
+      "termrank" : {
+          "terms" : { "field" : "kp", "include": "dobj_.*_door", "size":10} 
+      }
+  }
+}  
+
+
+GET /dm/_search
+{
+    "query": {
+        "prefix" : { "_id" : "119268" }
+    }
+}
+
+GET /docsim/_search
+{
+  "query": {
+    "bool": {
+      "must_not":{"terms" : {"uid": [0]} },
+      "should": [
+        {
+          "match": {
+            "snts": {
+              "query": "I love you.",
+              "boost": 2
+            }
+          }
+        },
+        {
+          "match": {
+            "snts": {
+              "query": "How are you?",
+              "boost": 1
+            }
+          }
+        }
+      ],
+      "minimum_should_match": "20%"
+    }
+  }
+}
+
+GET _search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+PUT /docsim/_settings
+{ "refresh_interval": "30s" } 
+
+
+GET /dm/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET /docsim/_search
+{
+  "query": {
+    "bool":{
+    	"should": [{ "terms": { "md5": ["459b9511a7f650ebd327889c45cc4e9b","d0c263e4e87859ce748e2725492bedd6"]}}],
+    	"minimum_should_match": 1,
+    	"must_not":{"terms" : {"uid": [123]} }
+    }
+  }
+}
+
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"kp":"VBG_playing"}
+  }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"tag":"e_snt.nv_agree"}
+  }
+}
+
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"kp":"dobj_visit_grandmother"}
+  }
+}
+
+GET /docsim/_search
+{
+  "query": {
+    "match": {"snts":"I love you."}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "snts", "size":10} 
+        }
+    }
+}
+
+
+#"uid" : "19911931",
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "dobj_visit_.*", "size":10} 
+        }
+    }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "wordlist" : {
+            "terms" : { "field" : "snt", "size":50000} 
+            
+        }
+    }
+}
+
+# return wordlist 
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "wordlist" : {
+            "terms" : { "field" : "snt", "size":50000} 
+            
+        }
+    }
+}
+
+# wordlist
+GET /sentbase/_search
+{
+  "query": {
+    "match": {"src":"clec"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "wordlist" : {
+            "terms" : { "field" : "snt", "size":1000} 
+            
+        }
+    }
+}
+
+
+
+
+GET /dm/_search
+{
+  "query": {"match": {"rid":"2055391"}},
+  "size" : 0,
+   "aggs": {
+      "a": {
+        "terms": {
+          "field": "kp",
+          "include": "ADJ_many", 
+          "size": 1
+        }
+      },
+      "n": {
+        "terms": {
+          "field": "kp",
+          "include": "NOUN_hobby", 
+          "size": 1
+        }
+      }
+  }
+    
+}
+
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+   "aggs": {
+      "a": {
+        "terms": {
+          "field": "kp",
+          "include": "ADJ_.*", 
+          "size": 10
+        }
+      },
+      "n": {
+        "terms": {
+          "field": "kp",
+          "include": "NOUN_.*", 
+          "size": 1
+        }
+      },
+      "v": {
+        "terms": {
+          "field": "kp",
+          "include": "VERB_.*", 
+          "size": 1
+        }
+      },
+      "d": {
+        "terms": {
+          "field": "kp",
+          "include": "ADV_.*", 
+          "size": 1
+        }
+      },
+      "p": {
+        "terms": {
+          "field": "kp",
+          "include": "PREP_.*", 
+          "size": 1
+        }
+      },
+      "r": {
+        "terms": {
+          "field": "kp",
+          "include": "PRON_.*", 
+          "size": 1
+        }
+      },
+      "c": {
+        "terms": {
+          "field": "kp",
+          "include": "CONJ_.*", 
+          "size": 1
+        }
+      }
+  }
+    
+}
+
+
+# (verb,cnt, sentence)
+GET /sentbase/_search
+{
+  "query": {
+    "match": {"src":"clec"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "VERB_.*", "size":10 } ,
+            "aggs" : {
+                "avg_age" : {
+                    "top_hits": { "_source": {"includes":"snt" }, "size":1
+                      
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+# (verb,cnt, sentence)
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "VERB_.*", "size":10 } ,
+            "aggs" : {
+                "avg_age" : {
+                    "top_hits": { "_source": {"includes":"snt" }, "size":1
+                      
+                    }
+                }
+            }
+        }
+    }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "kp","include": "ADJ_many|NOUN_hobby" } ,
+            "aggs" : {
+                "avg_age" : {
+                    "top_hits": { "_source": {"includes":"snt" }, "size":1
+                      
+                    }
+                }
+            }
+        }
+    }
+}
+
+GET /dm/_search
+{
+  "query": {
+    "match": {"rid":"2055391"}
+  },
+  "size" : 0,
+    "aggs" : {
+        "termrank" : {
+            "terms" : { "field" : "snt","include": "many|hobby" } ,
+            "aggs" : {
+                "avg_age" : {
+                    "top_hits": { "_source": {"includes":"snt" }, "size":1
+                      
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+POST /dm/_cache/clear
+
+delete /dm/_doc/mAT-1HIBrezUqn2jlrMR
+
+put /twitter
+
+post /dm/_doc/
+{
+  "snt":"The quick fox jumped over the lazy dog.", 
+  "sid":32,
+  "kp":["VERB/book","NOUN/book","dobj/open door"]
+}
+
+put /twitter/_doc/Hello_word
+{
+  "first_name":"Jane", 
+  "last_name":"Smith",
+  "age":32,
+  "about":"I like to collect rock albums",
+  "interests":["music"]
+}
+
+get /dm/_settings
+
+PUT dm
+{
+  "mappings": {
+    "properties": {
+      "tag": { "type": "text", "analyzer": "whitespace" }
+    }
+  }
+}
+
+
+DELETE /test-index/
+
+GET /test-index/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+GET /twitter/_search
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+put test-index
+
+PUT news
+{
+  "mappings": {
+    "properties": {
+      "tags": {
+        "type": "text",
+        "analyzer": "whitespace"
+      }
+    }
+  }
+}
+
+GET /dm/_search
+{
+    "query": {
+        "prefix" : { "_id" : "119268" }
+    }
+}
+
+GET /docsim/_search
+{
+  "query": {
+    "bool": {
+      "must_not":{"terms" : {"uid": [0]} },
+      "should": [
+        {
+          "match": {
+            "snts": {
+              "query": "I love you.",
+              "boost": 2
+            }
+          }
+        },
+        {
+          "match": {
+            "snts": {
+              "query": "How are you?",
+              "boost": 1
+            }
+          }
+        }
+      ],
+      "minimum_should_match": "20%"
+    }
+  }
+}
+
+
+PUT /my_index
+{
+    "mappings": {
+        "_default_": {
+            "_all": { "enabled":  false }
+        },
+        "blog": {
+            "_all": { "enabled":  true  }
+        }
+    }
+}
+
+https://www.elastic.co/guide/en/elasticsearch/reference/current/removal-of-types.html
+
+PUT _template/template1
+{
+  "index_patterns":[ "index-1-*" ],
+  "mappings": {
+    "properties": {
+      "foo": {
+        "type": "keyword"
+      }
+    }
+  }
+}
+
+python 使用 elasticsearch 常用方法（索引）
+#记录管理索引等方法
+
+from elasticsearch import Elasticsearch
+
+es = Elasticsearch(['xx.xx.xx.xx:9200'])
+
+#获取文档内容
+res = es.get_source(index="test", id='-R7AQ20BIdlTveXFPOTI')
+print(res)
+
+#获取文档信息
+res = es.get(index="test", id='-R7AQ20BIdlTveXFPOTI')
+print(res['_source'])
+
+#更新文档
+res = es.update(index="test", id='-R7AQ20BIdlTveXFPOTI', body={"doc": {"age": 37, "country": "china"}})
+print(res)
+
+#索引是否存在
+print(es.indices.exists(index="test"))
+
+#删除文档
+print(es.delete(index="test", id="-h7AQ20BIdlTveXFeOSg"))
+
+#多条数据查询
+res = es.mget(index="test", body={'ids': ["1", "-R7AQ20BIdlTveXFPOTI"]})
+print(res)
+
+
+#index创建索引
+res = es.index(index="school", body = {
+    'mappings': {
+        '_source': {
+            'enabled': True
+        },
+        'properties': {
+            'content': {'type': 'keyword'}
+        }
+    }
+})
+print(res)
+
+curl -XPOST 'localhost:9200/roopendra/post/100/_update' -d '{
+   "doc" : {
+        "tags": [ "elasticsearch"],
+        "page_view": 1
+   }
+}'
+
+from elasticsearch import Elasticsearch
+es		= Elasticsearch(['es.werror.com']) 
+index	= 'dm' # eid (_id), rid,uid, snts
+
+def kp_to_snt(kp:str='dobj_visit_grandmother'):
+	res = es.search(index=index, body={"from":0, "size":3, "query": {"match":{"kp": kp}}})	
+	return '' if len(res['hits']['hits']) <= 0 else res['hits']['hits'][0]['_source']['snt']
+
+
+PUT vocab
+{
+  "mappings": {
+    "dynamic_templates": [
+      {
+        "integers": {
+          "match_mapping_type": "long",
+          "mapping": {
+            "type": "integer"
+          }
+        }
+      },
+      {
+        "strings": {
+          "match_mapping_type": "string",
+          "mapping": {
+            "type": "text",
+            "fields": {
+              "raw": {
+                "type":  "keyword",
+                "index": "false" 
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}
+
+
+PUT vocab
+{
+  "mappings": {
+    "properties": {
+      "tags": {
+        "type": "text",
+        "analyzer": "whitespace"
+      }
+    }
+  }
+}
